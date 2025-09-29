@@ -1,29 +1,26 @@
-import { createClient } from "@/lib/supabase/server";
-import StopForm from "./stop-form";
+"use client";
+import { useState, useRef } from "react";
+import { supabase } from "@/lib/supabase/client";
+import SignatureCanvas from "react-signature-canvas";
 
-export default async function StopPage({ params }: { params: { id: string }}) {
-  const supabase = createClient();
-  const { data: stop } = await supabase
-    .from("route_stops")
-    .select("id, status, pickup_orders(address_line1, city, postal_code), route_id")
-    .eq("id", params.id)
-    .single();
+export default function StopForm({ routeStopId }: { routeStopId: string }) {
+  const [L, setL] = useState<number>(0);
+  const [W, setW] = useState<number>(0);
+  const [H, setH] = useState<number>(0);
+  const [weight, setWeight] = useState<number | undefined>();
+  const [recipient, setRecipient] = useState("");
+  const [phone, setPhone] = useState("");
+  const [price, setPrice] = useState<number | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const sigRef = useRef<SignatureCanvas>(null);
 
-  if (!stop) return <div className="p-6">Stop nicht gefunden.</div>;
+  function previewPrice() {
+    let p = 59;
+    const over = Math.max(0, L - 60, W - 40, H - 40);
+    if (over > 0) p += Math.ceil(over / 10) * 10;
+    const volume_m3 = (L * W * H) / 1_000_000;
+    if (volume_m3 > 0.2) p += (volume_m3 - 0.2) * 120;
+    setPrice(Math.round(p * 100) / 100);
+  }
 
-  // <-- WICHTIG: pickup_orders kann Array ODER Objekt sein → erstes Element nehmen
-  const addr = Array.isArray(stop.pickup_orders)
-    ? stop.pickup_orders[0]
-    : stop.pickup_orders;
-
-  return (
-    <main className="p-6">
-      <h1 className="text-xl mb-2">Stop</h1>
-      <p className="text-sm text-gray-600">
-        {addr?.address_line1}, {addr?.postal_code} {addr?.city}
-      </p>
-      <StopForm routeStopId={stop.id} />
-    </main>
-  );
-}
-
+  async function onSubmit(e: Rea
